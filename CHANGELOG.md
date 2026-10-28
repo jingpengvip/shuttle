@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - @blackadmin version typos in about window. 
 - @ChrisMoriarty add the ability to set the terminal window position and size
 
+## [1.3.0] - 2026-10-28
+### Fixed
+- 修复在 macOS 27（Apple 芯片）上点选主机时弹出「应用程序无法打开。-50」的问题。配置里的普通命令（例如 `ssh root@10.1.3.51`）会再次交给 iTerm，而不再被系统当成网址打开。
+- `openHost:` 原先用 `NSURL URLWithString:` 判断一条命令是不是网址：对象非空就调用 `NSWorkspace openURL:`，否则才走 AppleScript 打开终端。这个判断依赖旧系统的行为——带空格的命令会得到空的 `NSURL`。在当前系统上，同样的字符串会得到一个没有协议的 URL（`ssh%20root@10.1.3.51`），`if (url)` 一直为真，iTerm 脚本因此不会执行。`NSWorkspace` 打不开这个地址，系统弹出错误码 -50（参数错误）。
+- 新增 `ShuttleCommandIsOpenableURL`。只有命令本身带显式协议（例如 `ssh://`、`http://`、`cifs://`）才调用 `openURL`。无协议的 shell 命令、以及像 `localhost:22` 这种只有冒号但没有 `://` 的字符串，继续按 `terminal` 设置交给 iTerm 或 Terminal.app。`inTerminal` 为 `virtual` 时仍跳过网址判断。
+- 用当前 SDK 重新编译为 arm64，已安装到本机 `/Applications/Shuttle.app`。主机配置、`terminal: iTerm` 和 Rosetta 都不是这次弹窗的原因。
+
 ## [1.2.9] - 2016-10-18
 ### Added
 - @pluwen added Chinese language translations #185

@@ -463,6 +463,37 @@
     }
 }
 
+// Plain commands such as "ssh root@host" must be run in the terminal.
+// On current macOS, URLWithString: returns a non-nil NSURL with no scheme for
+// those strings. Opening that URL makes NSWorkspace fail with error -50
+// ("应用程序无法打开") and the iTerm script never runs.
+// Only explicit URLs (ssh://, http://, cifs://, ...) are handed to NSWorkspace.
+static BOOL ShuttleCommandIsOpenableURL(NSString *command, NSURL **outURL) {
+    if (outURL) {
+        *outURL = nil;
+    }
+    if (command.length == 0) {
+        return NO;
+    }
+
+    NSString *trimmed = [command stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSURL *candidate = [NSURL URLWithString:trimmed];
+    NSString *scheme = candidate.scheme;
+    if (scheme.length == 0) {
+        return NO;
+    }
+
+    NSString *prefix = [[NSString stringWithFormat:@"%@://", scheme] lowercaseString];
+    if (![trimmed.lowercaseString hasPrefix:prefix]) {
+        return NO;
+    }
+
+    if (outURL) {
+        *outURL = candidate;
+    }
+    return YES;
+}
+
 - (void) openHost:(NSMenuItem *) sender {
     //NSLog(@"sender: %@", sender);
     //NSLog(@"Command: %@",[sender representedObject]);
@@ -555,10 +586,10 @@
     
     //script expects the following order: Command, Theme, Title unless its virtual which bypasses the url check and expects Command, Title
     NSArray *passParameters;
-    NSURL *url;
+    NSURL *url = nil;
     if ( ![terminalWindow isEqualToString:@"virtual"] ) {
         passParameters = @[escapedObject, terminalTheme, terminalTitle];
-        url = [NSURL URLWithString:escapedObject];
+        ShuttleCommandIsOpenableURL(escapedObject, &url);
     }
     else {
         passParameters = @[escapedObject, terminalTitle];
